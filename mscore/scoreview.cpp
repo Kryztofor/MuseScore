@@ -117,6 +117,7 @@ ScoreView::ScoreView(QWidget* parent)
       _score      = 0;
       _omrView    = 0;
       dropTarget  = 0;
+      isTabletDrag = false;
 
       realtimeTimer = new QTimer(this);
       realtimeTimer->setTimerType(Qt::PreciseTimer);
@@ -2651,9 +2652,9 @@ void ScoreView::endNoteEntry()
 //   dragScoreView
 //---------------------------------------------------------
 
-void ScoreView::dragScoreView(QMouseEvent* ev)
+void ScoreView::dragScoreView(QPoint pos)
       {
-      QPoint d = ev->pos() - _matrix.map(editData.startMove).toPoint();
+      QPoint d = pos - _matrix.map(editData.startMove).toPoint();
       int dx   = d.x();
       int dy   = d.y();
 
@@ -2682,10 +2683,10 @@ void ScoreView::dragScoreView(QMouseEvent* ev)
 //   doDragLasso
 //---------------------------------------------------------
 
-void ScoreView::doDragLasso(QMouseEvent* ev)
+void ScoreView::doDragLasso(QPoint pos)
       {
       TourHandler::startTour("select-tour");
-      QPointF p = toLogical(ev->pos());
+      QPointF p = toLogical(pos);
       _score->addRefresh(lasso->canvasBoundingRect());
       QRectF r;
       r.setCoords(editData.startMove.x(), editData.startMove.y(), p.x(), p.y());

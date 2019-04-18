@@ -134,10 +134,10 @@ void ScoreView::startFotoDrag()
 //    drag canvas in foto mode
 //---------------------------------------------------------
 
-void ScoreView::doDragFoto(QMouseEvent* ev)
+void ScoreView::doDragFoto(QPoint pos)
       {
       _foto->setOffset(QPointF(0.0, 0.0));
-      QPointF p = toLogical(ev->pos());
+      QPointF p = toLogical(pos);
       QPointF sm = editData.startMove;
 
       QRectF r;
@@ -176,9 +176,9 @@ void ScoreView::endFotoDrag()
 //   doFotoDragEdit
 //---------------------------------------------------------
 
-void ScoreView::doFotoDragEdit(QMouseEvent* ev)
+void ScoreView::doFotoDragEdit(QPoint pos)
       {
-      QPointF p     = toLogical(ev->pos());
+      QPointF p     = toLogical(pos);
       QPointF delta = p - editData.startMove;
       score()->addRefresh(_foto->abbox());
 
@@ -203,9 +203,9 @@ void ScoreView::endFotoDragEdit()
 //   fotoEditElementDragTransition
 //---------------------------------------------------------
 
-bool ScoreView::fotoEditElementDragTransition(QMouseEvent* ev)
+bool ScoreView::fotoEditElementDragTransition(QPoint pos)
       {
-      editData.startMove = imatrix.map(QPointF(ev->pos()));
+      editData.startMove = imatrix.map(QPointF(pos));
       int i;
       for (i = 0; i < editData.grips; ++i) {
             if (editData.grip[i].contains(editData.startMove)) {
@@ -240,9 +240,9 @@ bool ScoreView::fotoEditElementDragTransition(QMouseEvent* ev)
 //   fotoScoreViewDragTest
 //---------------------------------------------------------
 
-bool ScoreView::fotoScoreViewDragTest(QMouseEvent* me)
+bool ScoreView::fotoScoreViewDragTest(QPoint pos)
       {
-      QPointF p(imatrix.map(QPointF(me->pos())));
+      QPointF p(imatrix.map(QPointF(pos)));
       if (_foto->bbox().contains(p))
             return false;
       for (int i = 0; i < editData.grips; ++i) {
@@ -257,9 +257,9 @@ bool ScoreView::fotoScoreViewDragTest(QMouseEvent* me)
 //   fotoScoreViewDragRectTest
 //---------------------------------------------------------
 
-bool ScoreView::fotoScoreViewDragRectTest(QMouseEvent* me)
+bool ScoreView::fotoScoreViewDragRectTest(QPoint pos)
       {
-      QPointF p(toLogical(me->pos()));
+      QPointF p(toLogical(pos));
       if (!_foto->bbox().contains(p))
             return false;
       for (int i = 0; i < editData.grips; ++i) {
@@ -274,9 +274,9 @@ bool ScoreView::fotoScoreViewDragRectTest(QMouseEvent* me)
 //   doDragFotoRect
 //---------------------------------------------------------
 
-void ScoreView::doDragFotoRect(QMouseEvent* ev)
+void ScoreView::doDragFotoRect(QPoint pos)
       {
-      QPointF p(toLogical(ev->pos()));
+      QPointF p(toLogical(pos));
       QPointF delta = p - editData.startMove;
       score()->addRefresh(_foto->abbox());
       _foto->setbbox(_foto->bbox().translated(delta));
@@ -602,7 +602,7 @@ void ScoreView::paintRect(bool printMode, QPainter& p, const QRectF& r, double m
 //   fotoDragDrop
 //---------------------------------------------------------
 
-void ScoreView::fotoDragDrop(QMouseEvent*)
+void ScoreView::fotoDragDrop(QPoint pos)
       {
       bool printMode   = true;
       QRectF r(_foto->bbox());

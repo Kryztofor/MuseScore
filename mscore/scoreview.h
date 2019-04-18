@@ -87,6 +87,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       Q_OBJECT
 
       ViewState state;
+      bool isTabletDrag;
       OmrView* _omrView;
 
       // the next elements are used during dragMove to give some visual
@@ -162,6 +163,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       virtual void mousePressEvent(QMouseEvent*) override;
       virtual void mouseReleaseEvent(QMouseEvent*) override;
       virtual void mouseDoubleClickEvent(QMouseEvent*);
+      virtual void tabletEvent(QTabletEvent *) override;
 
       virtual void keyPressEvent(QKeyEvent*) override;
       virtual void keyReleaseEvent(QKeyEvent*) override;
@@ -169,7 +171,6 @@ class ScoreView : public QWidget, public MuseScoreView {
 
       virtual void contextMenuEvent(QContextMenuEvent*) override;
 
-      void mousePressEventNormal(QMouseEvent*);
       void escapeCmd();
 
       void constraintCanvas(int *dxx, int *dyy);
@@ -253,7 +254,10 @@ class ScoreView : public QWidget, public MuseScoreView {
       void cmdRealtimeAdvance();
       void extendCurrentNote();
       void seqStopped();
-
+      void handleReleaseEvent();
+      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool allowDragNoteEntry);
+      void handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, bool allowNote);
+      void handlePressEventNormal(Qt::KeyboardModifiers keyState);
    public slots:
       void setViewRect(const QRectF&);
 
@@ -271,7 +275,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       void normalSwap();
 
       void cloneElement(Element* e);
-      void doFotoDragEdit(QMouseEvent* ev);
+      void doFotoDragEdit(QPoint pos);
 
       void updateContinuousPanel();
       void ticksTab(const Fraction& ticks);     // helper function
@@ -313,13 +317,13 @@ class ScoreView : public QWidget, public MuseScoreView {
       void zoom(qreal _mag, const QPointF& pos);
       void contextPopup(QContextMenuEvent* ev);
       bool editKeyLyrics();
-      void dragScoreView(QMouseEvent* ev);
-      void doDragElement(QMouseEvent* ev);
-      void doDragLasso(QMouseEvent* ev);
-      void doDragFoto(QMouseEvent* ev);
-      void doDragEdit(QMouseEvent* ev);
-      bool testElementDragTransition(QMouseEvent* ev);
-      bool fotoEditElementDragTransition(QMouseEvent* ev);
+      void dragScoreView(QPoint pos);
+      void doDragElement(QPoint pos);
+      void doDragLasso(QPoint pos);
+      void doDragFoto(QPoint pos);
+      void doDragEdit(QPoint pos);
+      bool testElementDragTransition(QPoint pos);
+      bool fotoEditElementDragTransition(QPoint pos);
       void addSlur();
       virtual void cmdAddSlur(ChordRest*, ChordRest*) override;
       virtual void cmdAddHairpin(HairpinType);
@@ -328,6 +332,8 @@ class ScoreView : public QWidget, public MuseScoreView {
       bool noteEntryMode() const { return state == ViewState::NOTE_ENTRY; }
       bool editMode() const      { return state == ViewState::EDIT; }
       bool fotoMode() const;
+
+
 
       virtual void setDropRectangle(const QRectF&);
       virtual void setDropTarget(const Element*) override;
@@ -357,14 +363,14 @@ class ScoreView : public QWidget, public MuseScoreView {
       void setFocusRect();
       void changeVoice(int voice);
       virtual void drawBackground(QPainter* p, const QRectF& r) const;
-      bool fotoScoreViewDragTest(QMouseEvent*);
-      bool fotoScoreViewDragRectTest(QMouseEvent*);
-      void doDragFotoRect(QMouseEvent*);
+      bool fotoScoreViewDragTest(QPoint pos);
+      bool fotoScoreViewDragRectTest(QPoint pos);
+      void doDragFotoRect(QPoint pos);
       void fotoContextPopup(QContextMenuEvent*);
       bool fotoRectHit(const QPoint& p);
       void paintRect(bool printMode, QPainter& p, const QRectF& r, double mag);
       bool saveFotoAs(bool printMode, const QRectF&);
-      void fotoDragDrop(QMouseEvent*);
+      void fotoDragDrop(QPoint pos);
       void changeEditElement(Element*);
 
       void cmdAppendMeasures(int, ElementType);

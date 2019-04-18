@@ -41,9 +41,9 @@ void ScoreView::startDrag()
 //   doDragElement
 //---------------------------------------------------------
 
-void ScoreView::doDragElement(QMouseEvent* ev)
+void ScoreView::doDragElement(QPoint pos)
       {
-      QPointF delta = toLogical(ev->pos()) - editData.startMove;
+      QPointF delta = toLogical(pos) - editData.startMove;
 
       TourHandler::startTour("autoplace-tour");
 
@@ -56,7 +56,7 @@ void ScoreView::doDragElement(QMouseEvent* ev)
       editData.hRaster = mscore->hRaster();
       editData.vRaster = mscore->vRaster();
       editData.delta   = pt;
-      editData.pos     = toLogical(ev->pos());
+      editData.pos     = toLogical(pos);
 
       for (Element* e : _score->selection().elements())
             _score->addRefresh(e->drag(editData));

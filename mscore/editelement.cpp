@@ -175,10 +175,10 @@ void ScoreView::endEdit()
 //   doDragEdit
 //---------------------------------------------------------
 
-void ScoreView::doDragEdit(QMouseEvent* ev)
+void ScoreView::doDragEdit(QPoint pos)
       {
       editData.lastPos   = editData.pos;
-      editData.pos       = toLogical(ev->pos());
+      editData.pos       = toLogical(pos);
       editData.modifiers = qApp->keyboardModifiers();
 
       if (!editData.element->isBarLine()) {
