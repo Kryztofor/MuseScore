@@ -79,6 +79,11 @@ enum class ViewState {
       FOTO_LASSO,
       };
 
+enum class EventSource {
+      MOUSE,
+      TABLET_PEN,
+      TABLET_ERASER
+      };
 //---------------------------------------------------------
 //   ScoreView
 //---------------------------------------------------------
@@ -88,6 +93,7 @@ class ScoreView : public QWidget, public MuseScoreView {
 
       ViewState state;
       bool isTabletDrag;
+      bool isStylusMode;
       OmrView* _omrView;
 
       // the next elements are used during dragMove to give some visual
@@ -255,9 +261,10 @@ class ScoreView : public QWidget, public MuseScoreView {
       void extendCurrentNote();
       void seqStopped();
       void handleReleaseEvent();
-      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool allowDragNoteEntry);
-      void handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, bool allowNote);
+      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, EventSource source);
+      void handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
       void handlePressEventNormal(Qt::KeyboardModifiers keyState);
+      void enterNote(Qt::KeyboardModifiers keyState, Qt::MouseButton button);
    public slots:
       void setViewRect(const QRectF&);
 

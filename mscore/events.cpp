@@ -214,20 +214,13 @@ void ScoreView::tabletEvent(QTabletEvent *ev)
                               else if (state == ViewState::NORMAL)
                                     changeState(ViewState::NOTE_ENTRY);
                               }
-                        else if (state == ViewState::NOTE_ENTRY) {
-                              editData.element = elementNear(toLogical(ev->pos()));
-                              handlePressEventNormal(ev->modifiers());
-
-                              if (!editData.element || (editData.element && !editData.element->isNote())) {
-                                    if (ev->button() == Qt::LeftButton && !isTabletDrag) {
-                                          if (ev->pointerType() == QTabletEvent::Pen) {
-                                                handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), true);
-                                                }
-                                          }
+                        else if (ev->button() == Qt::LeftButton) {
+                              if(ev->pointerType() == QTabletEvent::Pen) {
+                                    handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_PEN);
                                     }
-                              }
-                        else {
-                              handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), true);
+                              else if(ev->pointerType() == QTabletEvent::Eraser) {
+                                    handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_ERASER);
+                                    }
                               }
                         }
                   break;
@@ -241,8 +234,12 @@ void ScoreView::tabletEvent(QTabletEvent *ev)
                   break;
 
             case QEvent::TabletMove:
-                  if (m_deviceDown)
-                        handleMoveEvent(ev->modifiers(), ev->pos(), true);
+                  if (m_deviceDown) {
+                        cout<<"Tab Move:\t"<<(int)ev->button()<<"\t"<<ev->pointerType()<<"\n";
+                        if (ev->pointerType() == QTabletEvent::Pen) {
+                              handleMoveEvent(ev->modifiers(), ev->pos(), EventSource::TABLET_PEN);
+                              }
+                        }
                   break;
             }
 
@@ -428,7 +425,22 @@ void ScoreView::handlePressEventNormal(Qt::KeyboardModifiers keyState)
       mscore->endCmd();
       }
 
-void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, bool allowNote)
+void ScoreView::enterNote(Qt::KeyboardModifiers keyState, Qt::MouseButton button)
+      {
+      _score->startCmd();
+      bool restMode = _score->inputState().rest();
+      if (button == Qt::RightButton)
+            _score->inputState().setRest(!restMode);
+      _score->putNote(editData.startMove, keyState & Qt::ShiftModifier, keyState & Qt::ControlModifier);
+      if (button == Qt::RightButton)
+            _score->inputState().setRest(restMode);
+      _score->endCmd();
+      if (_score->inputState().cr())
+            adjustCanvasPosition(_score->inputState().cr(), false);
+      shadowNote->setVisible(false);
+      }
+
+void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source)
       {
       editData.startMovePixel = pos;
       editData.startMove = toLogical(pos);
@@ -473,18 +485,21 @@ void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt:
                   break;
 
             case ViewState::NOTE_ENTRY: {
-                  if (allowNote) {
-                        _score->startCmd();
-                        bool restMode = _score->inputState().rest();
-                        if (button == Qt::RightButton)
-                              _score->inputState().setRest(!restMode);
-                        _score->putNote(editData.startMove, keyState & Qt::ShiftModifier, keyState & Qt::ControlModifier);
-                        if (button == Qt::RightButton)
-                              _score->inputState().setRest(restMode);
-                        _score->endCmd();
-                        if (_score->inputState().cr())
-                              adjustCanvasPosition(_score->inputState().cr(), false);
-                        shadowNote->setVisible(false);
+                  //Only enter note in stylus mode if event source is the tablet pen
+                  //If not in stylus mode, source does not matter and note can be entered
+                  if(isStylusMode) {
+                        editData.element = elementNear(toLogical(pos));
+                        if(source == EventSource::TABLET_PEN) {
+                              if (!editData.element || (editData.element && !editData.element->isNote()))
+                                    enterNote(keyState, button);
+                              }
+                        else if(source == EventSource::TABLET_ERASER){
+                              if(editData.element && editData.element->isNote())
+                                    enterNote(keyState, button);
+                              }
+                        }
+                  else {
+                        enterNote(keyState, button);
                         }
                   }
                   break;
@@ -551,10 +566,10 @@ void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt:
 
 void ScoreView::mousePressEvent(QMouseEvent* ev)
       {
-      handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), true);
+      handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::MOUSE);
       }
 
-void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool allowDragNoteEntry)
+void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, EventSource source)
       {
       if (state != ViewState::NOTE_ENTRY && editData.buttons == Qt::NoButton)
             return;
@@ -575,10 +590,9 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool
                   break;
 
             case ViewState::NOTE_ENTRY: {
-                  if (allowDragNoteEntry) {
+                  if (isStylusMode && source == EventSource::TABLET_PEN) {
                         if (!drag)
                               return;
-
                         if (isTabletDrag) {
                               doDragElement(pos);
                               }
@@ -586,6 +600,7 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool
                               if (editData.element && editData.element->isMovable()) {
                                     cout << "Entered Drag\n";
                                     isTabletDrag = true;
+                                    handlePressEventNormal(keyState);
                                     endNoteEntry();
                                     setCursor(QCursor(Qt::ArrowCursor));
                                     startDrag();
@@ -649,7 +664,7 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool
 
 void ScoreView::mouseMoveEvent(QMouseEvent* me)
       {
-      handleMoveEvent(me->modifiers(), me->pos(), false);
+      handleMoveEvent(me->modifiers(), me->pos(), EventSource::MOUSE);
       }
 
 //---------------------------------------------------------
