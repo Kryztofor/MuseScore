@@ -242,7 +242,7 @@ void ScoreView::tabletEvent(QTabletEvent *ev)
 
             case QEvent::TabletMove:
                   if (m_deviceDown)
-                        handleMoveEvent(ev->modifiers(), ev->pos(), true)
+                        handleMoveEvent(ev->modifiers(), ev->pos(), true);
                   break;
             }
 
@@ -281,7 +281,7 @@ void ScoreView::focusOutEvent(QFocusEvent* event)
       }
 
 
-void ScoreView::mouseReleaseEvent()
+void ScoreView::handleReleaseEvent()
       {
       editData.buttons = Qt::NoButton;
       if (seq)
@@ -335,7 +335,7 @@ void ScoreView::mouseReleaseEvent(QMouseEvent*)
       handleReleaseEvent();
       }
 
-void ScoreView::mousePressEventNormal(Qt::KeyboardModifiers keyState)
+void ScoreView::handlePressEventNormal(Qt::KeyboardModifiers keyState)
       {
       _score->masterScore()->cmdState().reset(); // DEBUG: should not be necessary
 
@@ -428,7 +428,7 @@ void ScoreView::mousePressEventNormal(Qt::KeyboardModifiers keyState)
       mscore->endCmd();
       }
 
-void ScoreView::mousePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, bool allowNote)
+void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, bool allowNote)
       {
       editData.startMovePixel = pos;
       editData.startMove = toLogical(pos);
@@ -554,7 +554,7 @@ void ScoreView::mousePressEvent(QMouseEvent* ev)
       handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), true);
       }
 
-void ScoreView::mouseMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool allowDragNoteEntry)
+void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, bool allowDragNoteEntry)
       {
       if (state != ViewState::NOTE_ENTRY && editData.buttons == Qt::NoButton)
             return;
