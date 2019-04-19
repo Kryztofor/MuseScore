@@ -119,6 +119,8 @@ ScoreView::ScoreView(QWidget* parent)
       dropTarget  = 0;
       isTabletDrag = false;
       isStylusMode = true;
+      m_deviceDown = false;
+
 
       realtimeTimer = new QTimer(this);
       realtimeTimer->setTimerType(Qt::PreciseTimer);
@@ -164,7 +166,7 @@ ScoreView::ScoreView(QWidget* parent)
             return;
 
       grabGesture(Qt::PinchGesture);      // laptop pad (Mac) and touchscreen
-
+      setAttribute(Qt::WA_AcceptTouchEvents, true);
       //-----------------------------------------------------------------------
 
       if (MScore::debugMode)

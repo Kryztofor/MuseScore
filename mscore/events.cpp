@@ -65,13 +65,26 @@ bool ScoreView::event(QEvent* event)
 //            cloneElement(e);
 //            }
       else if (event->type() == QEvent::Gesture) {
+            cout<<"Gesture Event\n";
             return gestureEvent(static_cast<QGestureEvent*>(event));
             }
       else if (event->type() == QEvent::MouseButtonPress && qApp->focusWidget() != this) {
+            cout<<"Main Mouse Press\n";
             QMouseEvent* me = static_cast<QMouseEvent*>(event);
             if (me->button() == Qt::LeftButton)
                   this->setFocus();
             }
+      else if (event->type() == QEvent::TabletPress && qApp->focusWidget() != this) {
+            cout<<"Main Tablet Press\n";
+            QTabletEvent *ev = static_cast<QTabletEvent*>(event);
+            if (ev->button() == Qt::LeftButton)
+                  this->setFocus();
+            }
+      else if (event->type() == QEvent::TouchBegin || event->type() == QEvent::TouchUpdate || event->type() ==  QEvent::TouchEnd) {
+            QTouchEvent *ev = static_cast<QTouchEvent *>(event);
+            cout<<"Touch Event\n";
+            }
+
       return QWidget::event(event);
       }
 
@@ -84,6 +97,7 @@ bool ScoreView::gestureEvent(QGestureEvent *event)
       {
       if (QGesture *gesture = event->gesture(Qt::PinchGesture)) {
             // Zoom in/out when receiving a pinch gesture
+            cout<<"Pinch Gesture\n";
             QPinchGesture *pinch = static_cast<QPinchGesture *>(gesture);
 
             static qreal magStart = 1.0;
@@ -100,6 +114,8 @@ bool ScoreView::gestureEvent(QGestureEvent *event)
                   zoom(magStart*value, pinch->centerPoint());
                   }
             }
+      else
+            cout<<"Other Gesture\n";
       return true;
       }
 
@@ -202,10 +218,10 @@ void ScoreView::resizeEvent(QResizeEvent* /*ev*/)
 
 void ScoreView::tabletEvent(QTabletEvent *ev)
       {
-      static bool m_deviceDown = false;
-
+      cout<<"Tablet Event\n";
       switch (ev->type()) {
             case QEvent::TabletPress:
+                  cout<<"Tablet Press\n";
                   if (!m_deviceDown) {
                         m_deviceDown = true;
                         if (ev->button() == Qt::MiddleButton) {
@@ -226,6 +242,8 @@ void ScoreView::tabletEvent(QTabletEvent *ev)
                   break;
 
             case QEvent::TabletRelease:
+                  cout<<"Tablet Release\n";
+
                   if (m_deviceDown && ev->buttons() == Qt::NoButton) {
                         m_deviceDown = false;
                         handleReleaseEvent();
@@ -234,8 +252,9 @@ void ScoreView::tabletEvent(QTabletEvent *ev)
                   break;
 
             case QEvent::TabletMove:
+                  cout<<"Tablet Move\n";
+
                   if (m_deviceDown) {
-                        cout<<"Tab Move:\t"<<(int)ev->button()<<"\t"<<ev->pointerType()<<"\n";
                         if (ev->pointerType() == QTabletEvent::Pen) {
                               handleMoveEvent(ev->modifiers(), ev->pos(), EventSource::TABLET_PEN);
                               }
@@ -329,6 +348,8 @@ void ScoreView::handleReleaseEvent()
 
 void ScoreView::mouseReleaseEvent(QMouseEvent*)
       {
+      cout<<"Mouse Release\n";
+
       handleReleaseEvent();
       }
 
@@ -489,6 +510,7 @@ void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt:
                   //If not in stylus mode, source does not matter and note can be entered
                   if(isStylusMode) {
                         editData.element = elementNear(toLogical(pos));
+                        handlePressEventNormal(keyState);
                         if(source == EventSource::TABLET_PEN) {
                               if (!editData.element || (editData.element && !editData.element->isNote()))
                                     enterNote(keyState, button);
@@ -566,6 +588,8 @@ void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt:
 
 void ScoreView::mousePressEvent(QMouseEvent* ev)
       {
+      cout<<"Mouse Press\n";
+
       handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::MOUSE);
       }
 
@@ -590,23 +614,29 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Even
                   break;
 
             case ViewState::NOTE_ENTRY: {
-                  if (isStylusMode && source == EventSource::TABLET_PEN) {
+                  if (isStylusMode) {
+                       // editData.element = elementNear(toLogical(pos));
+                    //    handlePressEventNormal(keyState);
                         if (!drag)
                               return;
-                        if (isTabletDrag) {
-                              doDragElement(pos);
-                              }
-                        else {
-                              if (editData.element && editData.element->isMovable()) {
+                        else if(source == EventSource::TABLET_PEN) {
+                              if (isTabletDrag) {
+                                    doDragElement(pos);
+                                    }
+                              else if (editData.element && editData.element->isMovable()) {
                                     cout << "Entered Drag\n";
                                     isTabletDrag = true;
-                                    handlePressEventNormal(keyState);
+
                                     endNoteEntry();
                                     setCursor(QCursor(Qt::ArrowCursor));
                                     startDrag();
                                     }
                               }
+                        else if(source == EventSource::MOUSE && (editData.buttons & Qt::LeftButton) && !m_deviceDown) {
+                              dragScoreView(pos);
+                              }
                         }
+
                   else {
                         QPointF p = toLogical(pos);
                         QRectF r(shadowNote->canvasBoundingRect());
@@ -664,6 +694,8 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Even
 
 void ScoreView::mouseMoveEvent(QMouseEvent* me)
       {
+      cout<<"Mouse Move\n";
+
       handleMoveEvent(me->modifiers(), me->pos(), EventSource::MOUSE);
       }
 

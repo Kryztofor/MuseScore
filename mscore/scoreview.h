@@ -92,6 +92,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       Q_OBJECT
 
       ViewState state;
+      bool m_deviceDown;
       bool isTabletDrag;
       bool isStylusMode;
       OmrView* _omrView;
