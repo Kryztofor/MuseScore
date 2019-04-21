@@ -117,10 +117,6 @@ ScoreView::ScoreView(QWidget* parent)
       _score      = 0;
       _omrView    = 0;
       dropTarget  = 0;
-      isTabletDrag = false;
-      isStylusMode = true;
-      m_deviceDown = false;
-
 
       realtimeTimer = new QTimer(this);
       realtimeTimer->setTimerType(Qt::PreciseTimer);

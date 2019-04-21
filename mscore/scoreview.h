@@ -92,9 +92,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       Q_OBJECT
 
       ViewState state;
-      bool m_deviceDown;
-      bool isTabletDrag;
-      bool isStylusMode;
+
       OmrView* _omrView;
 
       // the next elements are used during dragMove to give some visual
@@ -262,7 +260,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       void extendCurrentNote();
       void seqStopped();
       void handleReleaseEvent();
-      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, EventSource source);
+      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
       void handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
       void handlePressEventNormal(Qt::KeyboardModifiers keyState);
       void enterNote(Qt::KeyboardModifiers keyState, Qt::MouseButton button);

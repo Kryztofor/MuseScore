@@ -80,9 +80,34 @@ bool ScoreView::event(QEvent* event)
             if (ev->button() == Qt::LeftButton)
                   this->setFocus();
             }
-      else if (event->type() == QEvent::TouchBegin || event->type() == QEvent::TouchUpdate || event->type() ==  QEvent::TouchEnd) {
+      else if (event->type() == QEvent::TouchBegin
+                  || event->type() == QEvent::TouchUpdate
+                  || event->type() == QEvent::TouchEnd) {
             QTouchEvent *ev = static_cast<QTouchEvent *>(event);
-            cout<<"Touch Event\n";
+            QList<QTouchEvent::TouchPoint> touchPoints = ev->touchPoints();
+            QPoint pos = touchPoints.last().pos().toPoint();
+
+            cout << "Touch Event\t" << (int) event->type() << "\n";
+            if (event->type() == QEvent::TouchBegin)
+                  {
+                  editData.startMovePixel = pos;
+                  editData.startMove = toLogical(pos);
+                  editData.lastPos = editData.startMove;
+                  editData.pos = editData.startMove;
+                  editData.buttons = Qt::NoButton;
+                  editData.modifiers = qApp->keyboardModifiers();
+                  editData.element = elementNear(toLogical(pos));
+                  //handlePressEventNormal(ev->modifiers());
+                  }
+            else if (event->type() == QEvent::TouchUpdate) {
+
+                  dragScoreView(pos);
+
+                  }
+            else if (event->type() == QEvent::TouchEnd) {
+
+                  }
+            return true;
             }
 
       return QWidget::event(event);
@@ -218,45 +243,100 @@ void ScoreView::resizeEvent(QResizeEvent* /*ev*/)
 
 void ScoreView::tabletEvent(QTabletEvent *ev)
       {
-      cout<<"Tablet Event\n";
+      static bool m_deviceDown = false;
+      static bool isTabletDrag =false;
+
       switch (ev->type()) {
             case QEvent::TabletPress:
-                  cout<<"Tablet Press\n";
                   if (!m_deviceDown) {
+                        cout<<"Tablet Press\n";
                         m_deviceDown = true;
-                        if (ev->button() == Qt::MiddleButton) {
-                              if (state == ViewState::NOTE_ENTRY)
-                                    changeState(ViewState::NORMAL);
-                              else if (state == ViewState::NORMAL)
-                                    changeState(ViewState::NOTE_ENTRY);
-                              }
-                        else if (ev->button() == Qt::LeftButton) {
-                              if(ev->pointerType() == QTabletEvent::Pen) {
+
+                        editData.startMovePixel = ev->pos();
+                        editData.startMove = toLogical(ev->pos());
+                        editData.lastPos = editData.startMove;
+                        editData.pos = editData.startMove;
+                        editData.buttons = ev->buttons();
+                        editData.modifiers = qApp->keyboardModifiers();
+
+                        if(ev->pointerType() == QTabletEvent::Pen) {
+                              editData.element = elementNear(toLogical(ev->pos()));
+                              handlePressEventNormal(ev->modifiers());
+
+                              if(state == ViewState::NOTE_ENTRY) {
+                                    if(
+                                                (!editData.element || (editData.element && !editData.element->isNote())) &&
+                                                (ev->button() != Qt::MiddleButton)
+                                                ){
+                                          cout<<"Tablet Note Entry\n";
+                                          handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_PEN);
+
+                                          }
+                                    }
+                              else {
+                                    cout<<"Tablet Normal Entry\n";
                                     handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_PEN);
                                     }
-                              else if(ev->pointerType() == QTabletEvent::Eraser) {
-                                    handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_ERASER);
+
+                              }
+                        else if(ev->pointerType() == QTabletEvent::Eraser) {
+                              Element *nearestElem = elementNear(toLogical(ev->pos()));
+                              if (nearestElem && nearestElem->isNote()) {
+                                    editData.element = elementNear(toLogical(ev->pos()));
+                                    handlePressEventNormal(ev->modifiers());
+
                                     }
+
+                             // handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_ERASER);
+                              _score->startCmd();
+                              _score->cmdDeleteSelection();
+                              _score->endCmd();
                               }
                         }
                   break;
 
             case QEvent::TabletRelease:
-                  cout<<"Tablet Release\n";
-
                   if (m_deviceDown && ev->buttons() == Qt::NoButton) {
+                        cout<<"Tablet Release\n";
                         m_deviceDown = false;
+                        if (isTabletDrag) {
+                              isTabletDrag = false;
+                              endDrag();
+                              setCursor(QCursor(Qt::ArrowCursor));
+                              startNoteEntry();
+                              }
                         handleReleaseEvent();
                         }
                   update();
                   break;
 
             case QEvent::TabletMove:
-                  cout<<"Tablet Move\n";
-
                   if (m_deviceDown) {
+                        cout<<"Tablet Move\n";
                         if (ev->pointerType() == QTabletEvent::Pen) {
-                              handleMoveEvent(ev->modifiers(), ev->pos(), EventSource::TABLET_PEN);
+                              if(state == ViewState::NOTE_ENTRY) {
+
+                                    if (isTabletDrag) {
+                                          doDragElement(ev->pos());
+                                          }
+                                    else if (editData.element && editData.element->isMovable()) {
+                                          bool drag = (ev->pos() - editData.startMovePixel).manhattanLength() > 4;
+
+                                          if (!drag) {
+                                                return;
+                                                }
+                                          else {
+                                                isTabletDrag = true;
+
+                                                endNoteEntry();
+                                                setCursor(QCursor(Qt::ArrowCursor));
+                                                startDrag();
+                                                }
+                                          }
+                                    }
+                              else {
+                                    handleMoveEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::TABLET_PEN);
+                                    }
                               }
                         }
                   break;
@@ -324,18 +404,10 @@ void ScoreView::handleReleaseEvent()
                         ScoreAccessibility::instance()->updateAccessibilityInfo();
                         }
             case ViewState::EDIT:
+            case ViewState::NOTE_ENTRY:
             case ViewState::PLAY:
             case ViewState::ENTRY_PLAY:
             case ViewState::FOTO:
-                  break;
-            case ViewState::NOTE_ENTRY:
-                  if (isTabletDrag) {
-                        cout << "End Drag\n";
-                        isTabletDrag = false;
-                        endDrag();
-                        setCursor(QCursor(Qt::ArrowCursor));
-                        startNoteEntry();
-                        }
                   break;
             case ViewState::FOTO_LASSO:
                   changeState(ViewState::FOTO);
@@ -348,8 +420,6 @@ void ScoreView::handleReleaseEvent()
 
 void ScoreView::mouseReleaseEvent(QMouseEvent*)
       {
-      cout<<"Mouse Release\n";
-
       handleReleaseEvent();
       }
 
@@ -506,23 +576,7 @@ void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt:
                   break;
 
             case ViewState::NOTE_ENTRY: {
-                  //Only enter note in stylus mode if event source is the tablet pen
-                  //If not in stylus mode, source does not matter and note can be entered
-                  if(isStylusMode) {
-                        editData.element = elementNear(toLogical(pos));
-                        handlePressEventNormal(keyState);
-                        if(source == EventSource::TABLET_PEN) {
-                              if (!editData.element || (editData.element && !editData.element->isNote()))
-                                    enterNote(keyState, button);
-                              }
-                        else if(source == EventSource::TABLET_ERASER){
-                              if(editData.element && editData.element->isNote())
-                                    enterNote(keyState, button);
-                              }
-                        }
-                  else {
-                        enterNote(keyState, button);
-                        }
+                  enterNote(keyState, button);
                   }
                   break;
 
@@ -588,24 +642,26 @@ void ScoreView::handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt:
 
 void ScoreView::mousePressEvent(QMouseEvent* ev)
       {
-      cout<<"Mouse Press\n";
-
       handlePressEvent(ev->modifiers(), ev->pos(), ev->buttons(), ev->button(), EventSource::MOUSE);
       }
 
-void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, EventSource source)
+void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source)
       {
       if (state != ViewState::NOTE_ENTRY && editData.buttons == Qt::NoButton)
             return;
 
       // start some drag operations after a minimum of movement:
       bool drag = (pos - editData.startMovePixel).manhattanLength() > 4;
+      bool useLasso = !editData.element && (
+                  (source == EventSource::MOUSE && (keyState & Qt::ShiftModifier)) ||
+                  (source == EventSource::TABLET_PEN && (buttons & Qt::MiddleButton))
+                  );
 
       switch (state) {
             case ViewState::NORMAL:
                   if (!drag)
                         return;
-                  if (!editData.element && (keyState & Qt::ShiftModifier))
+                  if (useLasso)
                         changeState(ViewState::LASSO);
                   else if (editData.element && editData.element->isMovable())
                         changeState(ViewState::DRAG_OBJECT);
@@ -614,37 +670,13 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Even
                   break;
 
             case ViewState::NOTE_ENTRY: {
-                  if (isStylusMode) {
-                       // editData.element = elementNear(toLogical(pos));
-                    //    handlePressEventNormal(keyState);
-                        if (!drag)
-                              return;
-                        else if(source == EventSource::TABLET_PEN) {
-                              if (isTabletDrag) {
-                                    doDragElement(pos);
-                                    }
-                              else if (editData.element && editData.element->isMovable()) {
-                                    cout << "Entered Drag\n";
-                                    isTabletDrag = true;
-
-                                    endNoteEntry();
-                                    setCursor(QCursor(Qt::ArrowCursor));
-                                    startDrag();
-                                    }
-                              }
-                        else if(source == EventSource::MOUSE && (editData.buttons & Qt::LeftButton) && !m_deviceDown) {
-                              dragScoreView(pos);
-                              }
-                        }
-
-                  else {
-                        QPointF p = toLogical(pos);
-                        QRectF r(shadowNote->canvasBoundingRect());
-                        setShadowNote(p);
-                        r |= shadowNote->canvasBoundingRect();
-                        update(toPhysical(r).adjusted(-2, -2, 2, 2));
-                        }
+                  QPointF p = toLogical(pos);
+                  QRectF r(shadowNote->canvasBoundingRect());
+                  setShadowNote(p);
+                  r |= shadowNote->canvasBoundingRect();
+                  update(toPhysical(r).adjusted(-2, -2, 2, 2));
                   }
+
                   break;
 
             case ViewState::DRAG:
@@ -694,9 +726,7 @@ void ScoreView::handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Even
 
 void ScoreView::mouseMoveEvent(QMouseEvent* me)
       {
-      cout<<"Mouse Move\n";
-
-      handleMoveEvent(me->modifiers(), me->pos(), EventSource::MOUSE);
+      handleMoveEvent(me->modifiers(), me->pos(), me->buttons(), me->button(), EventSource::MOUSE);
       }
 
 //---------------------------------------------------------
