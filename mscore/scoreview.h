@@ -251,6 +251,13 @@ class ScoreView : public QWidget, public MuseScoreView {
 
       void endLasso();
       Element* getDropTarget(EditData&);
+      void handleReleaseEvent();
+      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
+      void handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
+      void handlePressEventNormal(Qt::KeyboardModifiers keyState);
+      void enterNote(Qt::KeyboardModifiers keyState, Qt::MouseButton button);
+      void setEditData(Qt::MouseButtons buttons, QPoint pos);
+      bool isDrag(QPoint pos);
 
    private slots:
       void posChanged(POS pos, unsigned tick);
@@ -259,11 +266,7 @@ class ScoreView : public QWidget, public MuseScoreView {
       void cmdRealtimeAdvance();
       void extendCurrentNote();
       void seqStopped();
-      void handleReleaseEvent();
-      void handleMoveEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
-      void handlePressEvent(Qt::KeyboardModifiers keyState, QPoint pos, Qt::MouseButtons buttons, Qt::MouseButton button, EventSource source);
-      void handlePressEventNormal(Qt::KeyboardModifiers keyState);
-      void enterNote(Qt::KeyboardModifiers keyState, Qt::MouseButton button);
+
    public slots:
       void setViewRect(const QRectF&);
 
